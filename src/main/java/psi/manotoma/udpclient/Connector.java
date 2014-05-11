@@ -6,6 +6,7 @@ import java.net.DatagramSocket;
 import java.net.InetAddress;
 import java.net.SocketException;
 import java.net.UnknownHostException;
+import java.util.logging.Level;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import static psi.manotoma.udpclient.Packet.isSyn;
@@ -96,10 +97,37 @@ public class Connector {
 
     public void download(Packet pack) {
     }
-
-    public void upload(Packet pack) {
+    
+        public void upload(Packet pack) {
     }
 
+    //////////  Helper methods  //////////
+        
+    private void close(int connectionNum, short ack) {
+        Packet pack = new Packet(connectionNum, (short) 0, ack, Packet.Flag.FIN, new byte[0]);
+
+        DatagramPacket datagram = pack.buildDatagram(addr, port, Packet.Lengths.FIN.length());
+        LOG.info("Sending a FIN datagram..");
+
+        try {
+            socket.send(datagram);
+        } catch (Exception ex) {
+            LOG.error("An error occured while sending a packet: {}", ex);
+        }
+        try {
+            socket.receive(datagram);
+            pack = new Packet(datagram.getData());
+            LOG.info("Received response on FIN: {}", pack);
+        } catch (Exception ex) {
+            LOG.error("An error occured when recieving datagram: {}", ex);
+        }
+        if (Packet.isFin(pack)) {
+            socket.close();
+        }
+
+    }
+
+    //////////  Getters / Setters  //////////
     public InetAddress getAddr() {
         return addr;
     }
