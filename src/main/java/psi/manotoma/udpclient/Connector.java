@@ -18,7 +18,6 @@ public class Connector {
 
     private static final Logger LOG = LoggerFactory.getLogger(Connector.class);
     private static final int SYN_LOST_TIMEOUT = 100;
-    
     private InetAddress addr;
     private int port;
     private DatagramSocket socket;
@@ -44,7 +43,6 @@ public class Connector {
     private void createSocket() {
         try {
             this.socket = new DatagramSocket();
-            this.socket.setSoTimeout(SYN_LOST_TIMEOUT);
         } catch (SocketException ex) {
             LOG.error("An error occured when creating a socket: {}", ex);
         }
@@ -52,6 +50,11 @@ public class Connector {
     }
 
     public Packet connect(Packet packet) {
+        try {
+            this.socket.setSoTimeout(SYN_LOST_TIMEOUT);
+        } catch (SocketException ex) {
+            LOG.error("An error occured when creating a socket: {}", ex);
+        }
         LOG.info("Establishing connection to [{}, {}]..", addr, port);
         LOG.debug("Building packet: {}", packet);
         DatagramPacket dp = packet.buildDatagram(addr, port, Packet.Lengths.SYN.length());
