@@ -69,7 +69,7 @@ public class Connector {
             DatagramPacket recieved = new DatagramPacket(new byte[Packet.Lengths.MAX_PACKET_SIZE.length()], Packet.Lengths.MAX_PACKET_SIZE.length());
             try {
                 socket.receive(recieved);
-            } catch (IOException ex) {
+            } catch (Exception ex) {
                 LOG.error("An error occured when recieving a packet: {}", ex);
                 try {
                     this.socket.send(dp);
