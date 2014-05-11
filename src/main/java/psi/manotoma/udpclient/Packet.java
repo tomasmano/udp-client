@@ -48,8 +48,8 @@ public class Packet {
         System.arraycopy(connectionNumberArray, 0, buffer, 0, connectionNumberArray.length);
 
         // fill next 2 bytes in buffer with the syn number
-        byte[] synArray = ByteBuffer.allocate(2).putShort(seq).array();
-        System.arraycopy(synArray, 0, buffer, 0, synArray.length);
+        byte[] seqArray = ByteBuffer.allocate(2).putShort(seq).array();
+        System.arraycopy(seqArray, 0, buffer, 0, seqArray.length);
 
         // fill next 2 bytes in buffer with the ack number
         byte[] ackArray = ByteBuffer.allocate(2).putShort(ack).array();
