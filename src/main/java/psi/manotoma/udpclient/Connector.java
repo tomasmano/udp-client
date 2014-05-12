@@ -6,7 +6,8 @@ import java.net.DatagramSocket;
 import java.net.InetAddress;
 import java.net.SocketException;
 import java.net.UnknownHostException;
-import java.util.logging.Level;
+import java.util.HashMap;
+import java.util.Map;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import static psi.manotoma.udpclient.Packet.isSyn;
@@ -21,7 +22,9 @@ public class Connector {
     private static final int SYN_LOST_TIMEOUT = 100;
     private InetAddress addr;
     private int port;
+    private int connectionNumber;
     private DatagramSocket socket;
+    private Map<Integer, Packet> recieveds = new HashMap<Integer, Packet>();
 
     private Connector(InetAddress addr, int port) {
         this.addr = addr;
@@ -82,6 +85,7 @@ public class Connector {
 
             packet = new Packet(recieved.getData());
             LOG.info("Response recieved: [{}]", packet);
+            this.connectionNumber = packet.getConnectionNum();
 
             if (isSyn(packet)) {
                 try {
@@ -95,16 +99,48 @@ public class Connector {
         return null;
     }
 
-    public void download(Packet pack) {
+    public void download() {
+
+        Packet packet = null;
+        DatagramPacket datagram = null;
+        int ack = 255;
+
+        packet = recievePacket();
+
+        while (!Packet.isFin(packet)) {
+            if (packet.isValid(connectionNumber)) {
+                recieveds.put((int) packet.getSeq(), packet); // TODO handle overflow
+                if (recieveds.containsKey(ack)) {
+                    ack += 255;
+                }
+                // send ack to server nowS
+                packet = new Packet(connectionNumber, (short) 0, (short) ack, Packet.Flag.ZERO, new byte[0]);
+                datagram = packet.buildDatagram(addr, port, Packet.Lengths.ACK.length());
+                LOG.info("Sending a packet: {}", packet);
+                try {
+                    socket.send(datagram);
+
+                } catch (IOException ex) {
+                    LOG.error("An error occured when downloading: {}", ex);
+                }
+            }
+            packet = recievePacket();
+        }
+
+        close(connectionNumber, packet.getAck());
+
+        //TODO store data from packets
+        
     }
-    
-        public void upload(Packet pack) {
+
+    public void upload(Packet pack) {
     }
 
     //////////  Helper methods  //////////
-        
+    
     private void close(int connectionNum, short ack) {
-        Packet pack = new Packet(connectionNum, (short) 0, ack, Packet.Flag.FIN, new byte[0]);
+        
+        Packet pack = Packet.createFinPacket(connectionNum, ack);
 
         DatagramPacket datagram = pack.buildDatagram(addr, port, Packet.Lengths.FIN.length());
         LOG.info("Sending a FIN datagram..");
@@ -128,6 +164,7 @@ public class Connector {
     }
 
     //////////  Getters / Setters  //////////
+    
     public InetAddress getAddr() {
         return addr;
     }
@@ -139,5 +176,17 @@ public class Connector {
     @Override
     public String toString() {
         return "Connector{" + "addr=" + addr + ", port=" + port + '}';
+    }
+
+    private Packet recievePacket() {
+        DatagramPacket datagram = new DatagramPacket(new byte[Packet.Lengths.MAX_PACKET_SIZE.length()], Packet.Lengths.MAX_PACKET_SIZE.length(), addr, port);
+        try {
+            socket.receive(datagram);
+        } catch (IOException ex) {
+            LOG.error("An error occured when recieving a packet: {}", ex);
+        }
+        Packet packet = new Packet(datagram.getData());
+        LOG.info("Packet recieved: {}", packet);
+        return packet;
     }
 }
