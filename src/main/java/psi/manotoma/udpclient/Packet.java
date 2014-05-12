@@ -39,6 +39,10 @@ public class Packet {
             this.data[i] = datagram[Lengths.HEADER.length + i];
         }
     }
+    
+    public static Packet createFinPacket(int connectionNum, short ack){
+        return new Packet(connectionNum, (short) 0, ack, Flag.FIN, new byte[0]);
+    }
 
     public DatagramPacket buildDatagram(InetAddress address, int port, int packetLength) {
         byte[] buffer = new byte[packetLength];
@@ -69,14 +73,14 @@ public class Packet {
 
     public enum Flag {
 
-        SYN((byte) 4), FIN((byte) 2), RST((byte) 1);
+        SYN((byte) 4), FIN((byte) 2), RST((byte) 1), ZERO((byte) 0);
         private byte value;
 
         private Flag(byte value) {
             this.value = value;
         }
 
-        public int value() {
+        public byte value() {
             return value;
         }
 
@@ -115,6 +119,24 @@ public class Packet {
     
     public static boolean isFin(Packet packet) {
         return packet.flag == Flag.FIN;
+    }
+
+    public boolean isValid(int connectionNum) {
+        return this.connectionNum == connectionNum;
+    }
+    
+    //////////  Getters / Setters  //////////
+
+    public int getConnectionNum() {
+        return connectionNum;
+    }
+
+    public short getSeq() {
+        return seq;
+    }
+
+    public short getAck() {
+        return ack;
     }
 
     @Override
