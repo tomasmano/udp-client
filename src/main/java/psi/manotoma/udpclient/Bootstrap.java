@@ -13,7 +13,7 @@ public class Bootstrap {
 
     public static void main(String[] args) {
         Connector con = Connector.create(ADDR, PORT);
-        Packet packet = new Packet(0, (short) 0, (short) 0, Packet.Flag.SYN, PHOTO_DOWNLOAD);
+        Packet packet = Packet.createSynPacket(PHOTO_DOWNLOAD);
         con.connect(packet);
     }
 }

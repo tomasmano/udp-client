@@ -44,6 +44,10 @@ public class Packet {
         return new Packet(connectionNum, (short) 0, ack, Flag.FIN, new byte[0]);
     }
 
+    public static Packet createSynPacket(byte[] code){
+        return new Packet(0, (short) 0, (short) 0, Packet.Flag.SYN, code);
+    }
+
     public DatagramPacket buildDatagram(InetAddress address, int port, int packetLength) {
         byte[] buffer = new byte[packetLength];
 
