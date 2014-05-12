@@ -1,5 +1,6 @@
 package psi.manotoma.udpclient;
 
+import java.io.FileOutputStream;
 import java.io.IOException;
 import java.net.DatagramPacket;
 import java.net.DatagramSocket;
@@ -129,17 +130,24 @@ public class Connector {
 
         close(connectionNumber, packet.getAck());
 
-        //TODO store data from packets
-        
+        try {
+            FileOutputStream fos = new FileOutputStream("./pic.png", false);
+            for (Packet p : recieveds.values()) {
+                fos.write(p.getData());
+            }
+            fos.close();
+        } catch (IOException ex) {
+            LOG.error("An error occured when writing file: {}", ex);
+        }
+
     }
 
     public void upload(Packet pack) {
     }
 
     //////////  Helper methods  //////////
-    
     private void close(int connectionNum, short ack) {
-        
+
         Packet pack = Packet.createFinPacket(connectionNum, ack);
 
         DatagramPacket datagram = pack.buildDatagram(addr, port, Packet.Lengths.FIN.length());
@@ -164,7 +172,6 @@ public class Connector {
     }
 
     //////////  Getters / Setters  //////////
-    
     public InetAddress getAddr() {
         return addr;
     }

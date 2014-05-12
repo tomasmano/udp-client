@@ -143,6 +143,10 @@ public class Packet {
         return ack;
     }
 
+    public byte[] getData() {
+        return data;
+    }
+
     @Override
     public String toString() {
         return "Packet{" + "connectionNum=" + connectionNum + ", seq=" + seq + ", ack=" + ack + ", flag=" + flag + ", dLength=" + dLength + '}';
