@@ -168,7 +168,7 @@ public class Connector {
         if (Packet.isFin(pack)) {
             socket.close();
         }
-
+        recieveds.clear();
     }
 
     //////////  Getters / Setters  //////////
