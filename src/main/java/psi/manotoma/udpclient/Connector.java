@@ -9,6 +9,7 @@ import java.net.SocketException;
 import java.net.UnknownHostException;
 import java.util.HashMap;
 import java.util.Map;
+import java.util.logging.Level;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import static psi.manotoma.udpclient.Packet.isSyn;
@@ -143,7 +144,17 @@ public class Connector {
 
     }
 
-    public void upload(Packet pack) {
+    public void upload(String fileName) {
+    }
+    
+    public void send(byte[] data, int length, short seq){
+        try {
+            Packet packet = new Packet(connectionNumber, seq, (short) 0, Packet.Flag.ZERO, data);
+            DatagramPacket datagram = packet.buildDatagram(addr, port, length);
+            socket.send(datagram);
+        } catch (IOException ex) {
+            LOG.error("An error occured when sending packet: {}", ex);
+        }
     }
 
     //////////  Helper methods  //////////
