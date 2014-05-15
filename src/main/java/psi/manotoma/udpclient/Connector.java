@@ -114,7 +114,7 @@ public class Connector {
                 if (recieveds.containsKey(ack)) {
                     ack += 255;
                 }
-                // send ack to server nowS
+                // send ack to server now
                 packet = new Packet(connectionNumber, (short) 0, (short) ack, Packet.Flag.ZERO, new byte[0]);
                 datagram = packet.buildDatagram(addr, port, Packet.Lengths.ACK.length());
                 LOG.info("Sending a packet: {}", packet);
