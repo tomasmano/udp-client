@@ -139,6 +139,7 @@ public class Connector {
         } catch (IOException ex) {
             LOG.error("An error occured when writing file: {}", ex);
         }
+        recieveds.clear();
 
     }
 
@@ -168,7 +169,6 @@ public class Connector {
         if (Packet.isFin(pack)) {
             socket.close();
         }
-        recieveds.clear();
     }
 
     //////////  Getters / Setters  //////////
