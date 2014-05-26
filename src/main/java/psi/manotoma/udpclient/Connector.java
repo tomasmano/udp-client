@@ -9,7 +9,6 @@ import java.net.SocketException;
 import java.net.UnknownHostException;
 import java.util.HashMap;
 import java.util.Map;
-import java.util.logging.Level;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import static psi.manotoma.udpclient.Packet.isSyn;
@@ -70,6 +69,7 @@ public class Connector {
         } catch (IOException ex) {
             LOG.error("An error occured when creating a socket: {}", ex);
         }
+        LOG.debug("Datagram sent.");
         boolean synRecieved = false;
         while (!synRecieved) {
             DatagramPacket recieved = new DatagramPacket(new byte[Packet.Lengths.MAX_PACKET_SIZE.length()], Packet.Lengths.MAX_PACKET_SIZE.length());
@@ -103,11 +103,10 @@ public class Connector {
 
     public void download() {
 
-        Packet packet = null;
         DatagramPacket datagram = null;
         int ack = 255;
 
-        packet = recievePacket();
+        Packet packet = recievePacket();
 
         while (!Packet.isFin(packet)) {
             if (packet.isValid(connectionNumber)) {
@@ -157,8 +156,17 @@ public class Connector {
         }
     }
 
+    public void receive(DatagramPacket datagram){
+        try {
+            socket.receive(datagram);
+        } catch (IOException ex) {
+            LOG.error("An error occured when recieving packet: {}", ex);
+        }
+    }
+
     //////////  Helper methods  //////////
-    private void close(int connectionNum, short ack) {
+    
+    public void close(int connectionNum, short ack) {
 
         Packet pack = Packet.createFinPacket(connectionNum, ack);
 
@@ -168,14 +176,14 @@ public class Connector {
         try {
             socket.send(datagram);
         } catch (Exception ex) {
-            LOG.error("An error occured while sending a packet: {}", ex);
+            LOG.error("An error occured while sending FIN packet when closing connection: {}", ex);
         }
         try {
             socket.receive(datagram);
             pack = new Packet(datagram.getData());
             LOG.info("Received response on FIN: {}", pack);
         } catch (Exception ex) {
-            LOG.error("An error occured when recieving datagram: {}", ex);
+            LOG.error("An error occured when recieving response on FIN when closing connection: {}", ex);
         }
         if (Packet.isFin(pack)) {
             socket.close();
@@ -189,6 +197,10 @@ public class Connector {
 
     public int getPort() {
         return port;
+    }
+
+    public int getConnectionNumber() {
+        return connectionNumber;
     }
 
     @Override
