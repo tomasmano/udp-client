@@ -6,7 +6,7 @@ package psi.manotoma.udpclient;
  */
 public class Bootstrap {
 
-    public final static String ADDR = "baryk.felk.cvut.cz";
+    public final static String ADDR = "localhost";
     public final static int PORT = 4000;
     public final static byte[] PHOTO_DOWNLOAD = {0x01};
     public final static byte[] FIRMWARE_UPLOAD = {0x02};
@@ -15,5 +15,6 @@ public class Bootstrap {
         Connector con = Connector.create(ADDR, PORT);
         Packet packet = Packet.createSynPacket(PHOTO_DOWNLOAD);
         con.connect(packet);
+        con.download();
     }
 }
