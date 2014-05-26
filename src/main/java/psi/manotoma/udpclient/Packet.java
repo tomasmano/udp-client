@@ -12,9 +12,8 @@ import org.slf4j.LoggerFactory;
  * @author Tomas Mano <tomasmano@gmail.com>
  */
 public class Packet {
-    
-    private static final Logger LOG = LoggerFactory.getLogger(Packet.class);
 
+    private static final Logger LOG = LoggerFactory.getLogger(Packet.class);
     private int connectionNum;
     private short seq;
     private short ack;
@@ -32,7 +31,7 @@ public class Packet {
     }
 
     public Packet(byte[] datagram) {
-        LOG.debug("Initializing packet from datagram [size: {}]: {}", datagram.length, Arrays.toString(datagram));
+        //        LOG.debug("Initializing packet from datagram [size: {}]: {}", datagram.length, Arrays.toString(datagram));
         connectionNum = ByteBuffer.wrap(Arrays.copyOfRange(datagram, 0, 4)).getInt();
         seq = ByteBuffer.wrap(Arrays.copyOfRange(datagram, 4, 6)).getShort();
         ack = ByteBuffer.wrap(Arrays.copyOfRange(datagram, 6, 8)).getShort();
@@ -44,12 +43,12 @@ public class Packet {
             this.data[i] = datagram[Lengths.HEADER.length + i];
         }
     }
-    
-    public static Packet createFinPacket(int connectionNum, short ack){
+
+    public static Packet createFinPacket(int connectionNum, short ack) {
         return new Packet(connectionNum, (short) 0, ack, Flag.FIN, new byte[0]);
     }
 
-    public static Packet createSynPacket(byte[] code){
+    public static Packet createSynPacket(byte[] code) {
         return new Packet(0, (short) 0, (short) 0, Packet.Flag.SYN, code);
     }
 
@@ -76,9 +75,13 @@ public class Packet {
         if (this.data != null) {
             System.arraycopy(this.data, 0, buffer, Lengths.HEADER.length, this.data.length);
         }
-        LOG.debug("Filling datagram from buffer: {}", Arrays.toString(buffer));
+        //        LOG.debug("Filling datagram from buffer: {}", Arrays.toString(buffer));
 
         return new DatagramPacket(buffer, packetLength, address, port);
+    }
+
+    private byte[] convertIntToTwoByteArr(int num) {
+        return new byte[]{(byte) num, (byte) (num >>> 8)};
     }
 
     public enum Flag {
@@ -126,7 +129,7 @@ public class Packet {
     public static boolean isRst(Packet packet) {
         return packet.flag == Flag.RST;
     }
-    
+
     public static boolean isFin(Packet packet) {
         return packet.flag == Flag.FIN;
     }
@@ -134,9 +137,8 @@ public class Packet {
     public boolean isValid(int connectionNum) {
         return this.connectionNum == connectionNum;
     }
-    
-    //////////  Getters / Setters  //////////
 
+    //////////  Getters / Setters  //////////
     public int getConnectionNum() {
         return connectionNum;
     }
