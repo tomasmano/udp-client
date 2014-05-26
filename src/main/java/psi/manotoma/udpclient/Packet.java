@@ -4,12 +4,16 @@ import java.net.DatagramPacket;
 import java.net.InetAddress;
 import java.nio.ByteBuffer;
 import java.util.Arrays;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 /**
  *
  * @author Tomas Mano <tomasmano@gmail.com>
  */
 public class Packet {
+    
+    private static final Logger LOG = LoggerFactory.getLogger(Packet.class);
 
     private int connectionNum;
     private short seq;
@@ -28,10 +32,11 @@ public class Packet {
     }
 
     public Packet(byte[] datagram) {
+        LOG.debug("Initializing packet from datagram [size: {}]: {}", datagram.length, Arrays.toString(datagram));
         connectionNum = ByteBuffer.wrap(Arrays.copyOfRange(datagram, 0, 4)).getInt();
-        seq = ByteBuffer.wrap(Arrays.copyOfRange(datagram, 5, 7)).getShort();
-        ack = ByteBuffer.wrap(Arrays.copyOfRange(datagram, 7, 9)).getShort();
-        flag = Flag.parseValue(ByteBuffer.wrap(Arrays.copyOfRange(datagram, 9, 10)).getInt());
+        seq = ByteBuffer.wrap(Arrays.copyOfRange(datagram, 4, 6)).getShort();
+        ack = ByteBuffer.wrap(Arrays.copyOfRange(datagram, 6, 8)).getShort();
+        flag = Flag.parseValue(ByteBuffer.wrap(Arrays.copyOfRange(datagram, 8, 9)).get());
 
         dLength = datagram.length - Lengths.HEADER.length;
         data = new byte[dLength];
@@ -57,20 +62,21 @@ public class Packet {
 
         // fill next 2 bytes in buffer with the syn number
         byte[] seqArray = ByteBuffer.allocate(2).putShort(seq).array();
-        System.arraycopy(seqArray, 0, buffer, 0, seqArray.length);
+        System.arraycopy(seqArray, 0, buffer, 4, seqArray.length);
 
         // fill next 2 bytes in buffer with the ack number
         byte[] ackArray = ByteBuffer.allocate(2).putShort(ack).array();
-        System.arraycopy(ackArray, 0, buffer, 0, ackArray.length);
+        System.arraycopy(ackArray, 0, buffer, 6, ackArray.length);
 
         // fill last byte of header in buffer with the ack number
         byte[] flagArray = ByteBuffer.allocate(1).put(flag.value).array();
-        System.arraycopy(flagArray, 0, buffer, 0, flagArray.length);
+        System.arraycopy(flagArray, 0, buffer, 8, flagArray.length);
 
         // fill the rest of packet with data
         if (this.data != null) {
             System.arraycopy(this.data, 0, buffer, Lengths.HEADER.length, this.data.length);
         }
+        LOG.debug("Filling datagram from buffer: {}", Arrays.toString(buffer));
 
         return new DatagramPacket(buffer, packetLength, address, port);
     }
@@ -88,7 +94,7 @@ public class Packet {
             return value;
         }
 
-        public static Flag parseValue(int val) {
+        public static Flag parseValue(byte val) {
             Flag[] flags = Flag.values();
             for (Flag f : flags) {
                 if (f.value == val) {
