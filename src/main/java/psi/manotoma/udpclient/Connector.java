@@ -7,8 +7,9 @@ import java.net.DatagramSocket;
 import java.net.InetAddress;
 import java.net.SocketException;
 import java.net.UnknownHostException;
-import java.util.HashMap;
+import java.util.LinkedHashMap;
 import java.util.Map;
+import java.util.Set;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import static psi.manotoma.udpclient.Packet.isSyn;
@@ -25,7 +26,8 @@ public class Connector {
     private int port;
     private int connectionNumber;
     private DatagramSocket socket;
-    private Map<Integer, Packet> recieveds = new HashMap<Integer, Packet>();
+    private Map<Integer, Packet> recieveds = new LinkedHashMap<Integer, Packet>();
+    private int pCount = 0;
 
     private Connector(InetAddress addr, int port) {
         this.addr = addr;
@@ -42,6 +44,7 @@ public class Connector {
         }
         Connector c = new Connector(a, port);
         c.createSocket();
+        c.initMap();
         return c;
     }
 
@@ -63,46 +66,70 @@ public class Connector {
         LOG.info("Establishing connection to [{}, {}]..", addr, port);
         LOG.debug("Building packet: {}", packet);
         DatagramPacket dp = packet.buildDatagram(addr, port, Packet.Lengths.SYN.length());
-        LOG.debug("Sending datagram packet: {}", dp);
+        LOG.debug("Sending SYN packet: {}", dp);
         try {
             socket.send(dp);
         } catch (IOException ex) {
-            LOG.error("An error occured when creating a socket: {}", ex);
+            LOG.error("An error occured when sending SYN packet: {}", ex);
         }
-        LOG.debug("Datagram sent.");
+        LOG.debug("Datagram with SYN sent.");
         boolean synRecieved = false;
         while (!synRecieved) {
             DatagramPacket recieved = new DatagramPacket(new byte[Packet.Lengths.MAX_PACKET_SIZE.length()], Packet.Lengths.MAX_PACKET_SIZE.length());
             try {
                 socket.receive(recieved);
             } catch (Exception ex) {
-                LOG.error("An error occured when recieving a packet: {}", ex);
+                LOG.error("An error occured when recieving a SYN packet: {}", ex);
                 try {
                     this.socket.send(dp);
                 } catch (IOException f) {
-                    LOG.error("An error occured when resending a packet: {}", ex);
+                    LOG.error("An error occured when resending a SYN packet: {}", ex);
                 }
                 continue;
             }
 
             packet = new Packet(recieved.getData());
-            LOG.info("Response recieved: [{}]", packet);
+            LOG.info("Response on SYN recieved: [{}]", packet);
             this.connectionNumber = packet.getConnectionNum();
 
             if (isSyn(packet)) {
+                LOG.debug("SYN recieved: {}", packet);
+                synRecieved = true;
                 try {
                     this.socket.setSoTimeout(0);
                 } catch (SocketException ex) {
-                    LOG.error("An error occured when setting a timeout: {}", ex);
+                    LOG.error("An error occured when resetting a timeout: {}", ex);
                 }
                 return packet;
             }
+            LOG.debug("SYN NOT recieved: {}", packet);
         }
         return null;
     }
 
-    public void download() {
+    private void initMap() {
+        for (int i = 0; i < 65535; ) {
+            recieveds.put(i+=255, null);
+        }
+    }
+    
+    private int getNextAck(int from) {
+        pCount++;
+        if (recieveds.get(from) == null) {
+            return from;
+        }
+        Set<Integer> keySet = recieveds.keySet();
+        for (Integer i : keySet) {
+            if (recieveds.get(i + from) == null) {
+                System.out.println("i: "+i);
+                System.out.println("from: "+from);
+                return i + from;
+            }
+        }
+        throw new RuntimeException("Next ACK not found");
+    }
 
+    public void download() {
         DatagramPacket datagram = null;
         int ack = 255;
 
@@ -110,14 +137,15 @@ public class Connector {
 
         while (!Packet.isFin(packet)) {
             if (packet.isValid(connectionNumber)) {
+                LOG.debug("Storing packet [SEQ: {}, total recieved: {}]", packet.getSeq(), ++pCount);
                 recieveds.put((int) packet.getSeq(), packet); // TODO handle overflow
-                if (recieveds.containsKey(ack)) {
-                    ack += 255;
-                }
+
+                ack = getNextAck(ack);
+                LOG.debug("Setting ACK to [{}]", ack);
                 // send ack to server now
                 packet = new Packet(connectionNumber, (short) 0, (short) ack, Packet.Flag.ZERO, new byte[0]);
                 datagram = packet.buildDatagram(addr, port, Packet.Lengths.ACK.length());
-                LOG.info("Sending a packet: {}", packet);
+                LOG.debug("Sending ACK to server: {}", packet);
                 try {
                     socket.send(datagram);
 
@@ -145,8 +173,8 @@ public class Connector {
 
     public void upload(String fileName) {
     }
-    
-    public void send(byte[] data, int length, short seq){
+
+    public void send(byte[] data, int length, short seq) {
         try {
             Packet packet = new Packet(connectionNumber, seq, (short) 0, Packet.Flag.ZERO, data);
             DatagramPacket datagram = packet.buildDatagram(addr, port, length);
@@ -156,7 +184,7 @@ public class Connector {
         }
     }
 
-    public void receive(DatagramPacket datagram){
+    public void receive(DatagramPacket datagram) {
         try {
             socket.receive(datagram);
         } catch (IOException ex) {
@@ -165,8 +193,9 @@ public class Connector {
     }
 
     //////////  Helper methods  //////////
-    
     public void close(int connectionNum, short ack) {
+        
+        pCount = 0;
 
         Packet pack = Packet.createFinPacket(connectionNum, ack);
 
